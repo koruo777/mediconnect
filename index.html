@@ -171,10 +171,11 @@ const NOTES=[
 // === Googleフォーム設定（フォーム作成後にここだけ差し替え）===
 // フォーム右上 ⋮ →「事前入力したURLを取得」で出た base と entry.xxxx を入れる
 const FORM={
- base:'',               // 例: https://docs.google.com/forms/d/e/XXXXXXXX/viewform
- screen:'entry.1111',   // 「画面名」項目の entry ID
- note:'entry.2222',     // 「論点番号」項目の entry ID
- url:'entry.3333'       // 「URL」項目の entry ID（任意）
+ base:'https://docs.google.com/forms/d/e/1FAIpQLSd3UAdH6H1CNx-M1xIdSbv6WKSTw3xX1DCF09wr9N7o-P3RMA/viewform',
+ screen:'entry.1840518713', // 画面名
+ note:'entry.2075635724',   // 論点番号
+ comment:'entry.222346198', // コメント（頭にURLを差し込む）
+ url:''                     // URL項目は無し
 };
 const stage=document.getElementById('stage');
 
@@ -371,7 +372,8 @@ function openComment(){
  const u=new URL(FORM.base);
  u.searchParams.set(FORM.screen,sc);
  if(ns)u.searchParams.set(FORM.note,ns);
- if(FORM.url&&!/^entry\.3333$/.test(FORM.url))u.searchParams.set(FORM.url,pageUrl);
+ if(FORM.comment)u.searchParams.set(FORM.comment,`（対象: ${sc}${ns?' / 論点'+ns:''}）\n${pageUrl}\n\nコメント: `);
+ if(FORM.url)u.searchParams.set(FORM.url,pageUrl);
  window.open(u.toString(),'_blank','noopener');
 }
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
