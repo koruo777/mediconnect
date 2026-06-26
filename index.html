@@ -120,10 +120,20 @@ body.noteson .stage{padding-bottom:168px;}
 .nitem .nt{color:#e7ece4;font-size:.73rem;font-weight:700;}
 .nitem .nd{color:#aeb6ab;font-size:.65rem;margin-top:3px;line-height:1.4;}
 .nitem .loc{color:#83b9a4;font-size:.6rem;margin-top:4px;}
-/* コメントボタン */
-#cmtBtn{position:fixed;right:16px;bottom:16px;z-index:45;background:var(--mint);color:#05332a;border:0;border-radius:999px;padding:11px 16px;font-size:.82rem;font-weight:700;box-shadow:0 6px 18px rgba(10,42,42,.3);cursor:pointer;}
-#cmtBtn:hover{background:var(--mintd);color:#fff;}
-body.noteson #cmtBtn{bottom:176px;}
+/* 論点コメント入力（ページ内） */
+#cmtBox{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);bottom:152px;width:calc(100% - 32px);max-width:420px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 44px rgba(10,42,42,.32);padding:14px;z-index:50;display:none;opacity:0;transition:.18s;}
+#cmtBox.on{display:block;opacity:1;transform:translateX(-50%) translateY(0);}
+#cmtBox .ch{font-size:.8rem;font-weight:700;color:var(--forest);margin-bottom:8px;}
+#cmtBox .ch b{display:inline-flex;width:20px;height:20px;background:var(--amber);color:#2a2206;border-radius:50%;align-items:center;justify-content:center;font-size:.7rem;margin:0 3px;}
+#cmtBox textarea{width:100%;min-height:84px;border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit;font-size:.85rem;resize:vertical;box-sizing:border-box;}
+#cmtBox .cact{display:flex;gap:8px;margin-top:10px;}
+#cmtBox .cact button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:700;font-size:.82rem;cursor:pointer;}
+#cmtCancel{background:#eef1f0;color:var(--muted);}
+#cmtSend{background:var(--mint);color:#05332a;}
+#cmtSend:disabled{background:#cfd6d3;color:#fff;cursor:not-allowed;}
+#cmtBox .cnote{font-size:.62rem;color:var(--muted);margin-top:7px;}
+#gtoast{position:fixed;left:50%;transform:translateX(-50%);bottom:152px;background:var(--forest);color:#fff;padding:10px 18px;border-radius:10px;font-size:.8rem;z-index:60;opacity:0;transition:.25s;pointer-events:none;}
+#gtoast.show{opacity:1;}
 </style></head><body>
 
 <div class="bar">
@@ -136,7 +146,13 @@ body.noteson #cmtBtn{bottom:176px;}
 <div class="note">※ <b>社外秘</b>・<b>合成データ</b>。問診項目・要注意条件は<b>大上監修の草案</b>。患者で問診提出→管理画面で会計作成・消込→患者の会計が確定、まで動きます。</div>
 <div class="stage" id="stage"></div>
 <div id="notesPanel"></div>
-<button id="cmtBtn">💬 コメント</button>
+<div id="cmtBox">
+  <div class="ch">論点 <b id="cmtNo">–</b> ・ <span id="cmtScreen">–</span> へのコメント</div>
+  <textarea id="cmtText" placeholder="気になる点・修正案を入力（論点番号と画面名は自動で付きます）"></textarea>
+  <div class="cact"><button id="cmtCancel">キャンセル</button><button id="cmtSend">送信</button></div>
+  <div class="cnote">送信内容はスプレッドシートに記録されます（社外秘・大上レビュー用）。</div>
+</div>
+<div id="gtoast"></div>
 
 <script>
 "use strict";
@@ -347,7 +363,7 @@ function renderNotesBar(){
  p.innerHTML=`<div class="ph">未確定UIの論点（大上と確認）<span class="x" id="nclose">閉じる ✕</span></div>`
   +`<div class="nrow">`+NOTES.map((o,i)=>`<div class="nitem" data-i="${i}"><div class="nt"><span class="nn">${o.n}</span>${o.t}</div><div class="nd">${o.d}</div><div class="loc">📍 ${o.loc}</div></div>`).join('')+`</div>`;
  p.querySelector('#nclose').onclick=()=>{S.notes=false;document.getElementById('ntoggle').classList.remove('on');render();};
- p.querySelectorAll('.nitem').forEach(el=>el.onclick=()=>jumpNote(+el.dataset.i));
+ p.querySelectorAll('.nitem').forEach(el=>el.onclick=()=>openNoteComment(+el.dataset.i));
 }
 function jumpNote(i){
  const o=NOTES[i],g=o.go;
@@ -363,18 +379,33 @@ function screenName(){
  if(S.view==='admin')return '管理画面';
  return ({home:'ホーム',booking:'予約',inquiry:'問診',payment:'会計',qr:'予約QR'})[S.screen]||S.screen;
 }
-function curNotes(){
- return NOTES.filter(o=>o.go.view===S.view && (S.view==='admin'||o.go.screen===S.screen)).map(o=>o.n).join(',');
+function gtoast(m){const t=document.getElementById('gtoast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1900);}
+let cmtNote=null, cmtScreen=null;
+function openNoteComment(i){
+ const o=NOTES[i];
+ jumpNote(i);                       // 該当画面へジャンプ＋ハイライト
+ cmtNote=o.n; cmtScreen=screenName();
+ document.getElementById('cmtNo').textContent=o.n;
+ document.getElementById('cmtScreen').textContent=cmtScreen;
+ const ta=document.getElementById('cmtText'); ta.value='';
+ document.getElementById('cmtSend').disabled=false;
+ document.getElementById('cmtBox').classList.add('on');
+ setTimeout(()=>ta.focus(),60);
 }
-function openComment(){
- const sc=screenName(), ns=curNotes(), pageUrl=location.href;
- if(!FORM.base){alert('Googleフォームが未設定です。\nスクリプト先頭の FORM 設定（base と entry ID）を入れると有効になります。\n\n（参考プリフィル）画面='+sc+' ／ 論点='+(ns||'—'));return;}
- const u=new URL(FORM.base);
- u.searchParams.set(FORM.screen,sc);
- if(ns)u.searchParams.set(FORM.note,ns);
- if(FORM.comment)u.searchParams.set(FORM.comment,`（対象: ${sc}${ns?' / 論点'+ns:''}）\n${pageUrl}\n\nコメント: `);
- if(FORM.url)u.searchParams.set(FORM.url,pageUrl);
- window.open(u.toString(),'_blank','noopener');
+function closeCmt(){document.getElementById('cmtBox').classList.remove('on');}
+function sendCmt(){
+ const ta=document.getElementById('cmtText'), txt=ta.value.trim();
+ if(!txt){gtoast('コメントを入力してください');return;}
+ if(!FORM.base){gtoast('フォーム未設定です');return;}
+ const btn=document.getElementById('cmtSend'); btn.disabled=true;
+ const body=new URLSearchParams();
+ body.set(FORM.screen, cmtScreen||'');
+ body.set(FORM.note, String(cmtNote||''));
+ body.set(FORM.comment, txt);
+ const url=FORM.base.replace('/viewform','/formResponse');
+ fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()})
+  .then(()=>{closeCmt();gtoast('送信しました（論点'+cmtNote+'）');})
+  .catch(()=>{closeCmt();gtoast('送信しました（論点'+cmtNote+'）');});
 }
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
 function wire(){
@@ -405,8 +436,9 @@ stage.addEventListener('click',e=>{
 });
 document.getElementById('vp').onclick=()=>{S.view='patient';render();};
 document.getElementById('va').onclick=()=>{S.view='admin';render();};
-document.getElementById('ntoggle').onclick=()=>{S.notes=!S.notes;document.getElementById('ntoggle').classList.toggle('on',S.notes);render();};
-document.getElementById('cmtBtn').onclick=openComment;
+document.getElementById('ntoggle').onclick=()=>{S.notes=!S.notes;document.getElementById('ntoggle').classList.toggle('on',S.notes);if(!S.notes)closeCmt();render();};
+document.getElementById('cmtCancel').onclick=closeCmt;
+document.getElementById('cmtSend').onclick=sendCmt;
 document.getElementById('reset').onclick=()=>{Object.assign(S,{view:'patient',screen:'home',step:1,dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',submitted:false,flagged:false,paid:false,adminBill:'none',notes:false});document.getElementById('ntoggle').classList.remove('on');render();};
 renderNotesBar();
 render();
