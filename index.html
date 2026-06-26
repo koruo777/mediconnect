@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediConnect — 動くプロトタイプ v2</title>
+<style>
+:root{--forest:#0a2a2a;--forest2:#11423c;--mint:#4ecfa0;--mintd:#2bb389;--paper:#eef3f1;
+--ink:#16241f;--muted:#6b7a74;--line:#e4ebe8;--alert:#d9483b;--amber:#caa12f;--slate:#62727c;--tint:#eafaf4;}
+*{box-sizing:border-box;}
+body{margin:0;background:#dde7e3;color:var(--ink);min-height:100vh;
+font-family:"Yu Gothic","YuGothic","Hiragino Kaku Gothic ProN","Hiragino Sans","Meiryo","Noto Sans JP",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+.bar{background:var(--forest);color:#fff;padding:13px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:30;}
+.bar h1{font-size:1rem;margin:0;font-weight:700;}.bar .sub{font-size:.72rem;color:#9fc4b8;}
+.seg{margin-left:auto;display:flex;background:#11423c;border-radius:10px;padding:3px;gap:3px;}
+.seg button{border:0;background:transparent;color:#bcd6cd;font-size:.8rem;padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:700;}
+.seg button.on{background:var(--mint);color:#05332a;}
+.reset{border:1px solid #1e4f48;background:transparent;color:#9fc4b8;border-radius:8px;padding:6px 11px;font-size:.74rem;cursor:pointer;}
+.note{background:#11423c;color:#cfe5dd;font-size:.72rem;padding:7px 20px;}.note b{color:var(--mint);}
+.stage{display:flex;justify-content:center;padding:26px 16px 60px;}
+.phone{width:318px;background:#0c0c0e;border-radius:38px;padding:10px;box-shadow:0 16px 40px rgba(10,42,42,.28);}
+.screen{background:var(--paper);border-radius:30px;overflow:hidden;height:620px;display:flex;flex-direction:column;position:relative;}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:90px;height:19px;background:#0c0c0e;border-radius:12px;z-index:5;}
+.ab{background:var(--forest);color:#fff;padding:24px 15px 12px;display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+.ab .t{font-weight:700;font-size:.94rem;}.ab .ic{cursor:pointer;opacity:.9;}
+.body{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:11px;}
+.tabs{display:flex;background:#fff;border-top:1px solid var(--line);flex:0 0 auto;}
+.tabs .tb{flex:1;text-align:center;padding:9px 0 10px;font-size:.62rem;color:var(--muted);cursor:pointer;}
+.tabs .tb .d{font-size:1.05rem;display:block;margin-bottom:3px;}
+.tabs .tb.on{color:var(--forest);font-weight:700;}.tabs .tb.on .d{color:var(--mintd);}
+.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;}
+.card.key{background:var(--forest);color:#fff;border:0;}.card.key .lab{color:var(--mint);}
+.lab{font-size:.67rem;color:var(--muted);font-weight:700;letter-spacing:.03em;}
+.req{color:var(--alert);font-size:.6rem;font-weight:700;margin-left:4px;}
+.big{font-size:1.15rem;font-weight:700;}
+.row{display:flex;align-items:center;gap:8px;}.row .sp{flex:1;}
+.muted{color:var(--muted);}.fs{font-size:.82rem;}.fxs{font-size:.73rem;}
+.btn{display:block;width:100%;text-align:center;background:var(--mint);color:#05332a;font-weight:700;border-radius:11px;padding:13px;font-size:.86rem;border:0;cursor:pointer;}
+.btn.ghost{background:#fff;border:1.5px solid var(--mint);color:var(--mintd);}.btn.dark{background:var(--forest);color:#fff;}
+.btn.sm{padding:9px;font-size:.8rem;}
+.chip{display:inline-block;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:.76rem;cursor:pointer;user-select:none;}
+.chip.on{background:var(--tint);border-color:var(--mint);color:#0a5a45;font-weight:700;}
+.chip.flagable.on{background:#fdecea;border-color:var(--alert);color:var(--alert);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.alert{background:#fff7ed;border:1px solid #f0d9ad;border-radius:11px;padding:11px;display:flex;gap:8px;align-items:center;cursor:pointer;}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.badge{font-size:.64rem;font-weight:700;padding:2px 7px;border-radius:6px;}
+.b-warn{background:#fdecea;color:var(--alert);}.b-ok{background:var(--tint);color:#0a6b52;}.b-wait{background:#eef1f3;color:var(--slate);}
+.step{display:flex;gap:5px;font-size:.67rem;color:var(--muted);}.step b{color:var(--mintd);}
+.line{height:1px;background:var(--line);margin:3px 0;}
+.sub{font-size:.66rem;color:var(--mintd);font-weight:700;}
+.cal{display:flex;flex-wrap:wrap;margin-top:9px;}
+.cal .h{width:14.28%;text-align:center;font-size:.6rem;color:var(--muted);padding-bottom:4px;}
+.cal .h.sun{color:var(--alert);}
+.cell{width:14.28%;text-align:center;padding:4px 0;border-radius:9px;cursor:pointer;}
+.cell .dn{display:block;font-size:.76rem;}.cell .sym{display:block;font-size:.74rem;font-weight:700;margin-top:1px;}
+.cell.past{cursor:default;}.cell.past .dn{color:#c4cdc9;}.cell.past .sym{visibility:hidden;}.cell.off{cursor:not-allowed;}
+.cell.on{background:var(--mint);}.cell.on .dn,.cell.on .sym{color:#05332a;font-weight:700;}
+.s-best{color:var(--mintd);}.s-ok{color:var(--mintd);}.s-few{color:var(--amber);}.s-full{color:#c0392b;}.s-off{color:#9aa6a1;}
+.legend{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:.64rem;color:var(--muted);}.legend b{font-size:.78rem;}
+.tgrid{display:flex;flex-wrap:wrap;gap:6px;}
+.tchip{width:calc((100% - 12px)/3);border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 0;text-align:center;cursor:pointer;}
+.tchip .tt{font-size:.84rem;font-weight:700;}.tchip .ta{font-size:.8rem;font-weight:700;}
+.tchip.on{background:var(--mint);border-color:var(--mint);}.tchip.on .tt,.tchip.on .ta{color:#05332a;}
+.tchip.off{background:#f4f6f5;cursor:not-allowed;}.tchip.off .tt{color:#b7c0bc;}.tchip.off .ta{color:#c4cdc9;}
+.qr{width:148px;height:148px;margin:8px auto;border:7px solid #fff;outline:1px solid var(--line);border-radius:12px;background:repeating-conic-gradient(#0a2a2a 0% 25%,#fff 0% 50%) 0 0/30px 30px;}
+input[type=range]{width:100%;accent-color:var(--mint);}
+input.temp{width:84px;font-size:1.1rem;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:6px 9px;text-align:center;}
+.nrsval{font-size:1.05rem;font-weight:700;}
+.toast{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);background:var(--forest);color:#fff;padding:10px 16px;border-radius:10px;font-size:.78rem;opacity:0;transition:.25s;pointer-events:none;z-index:20;text-align:center;}
+.toast.show{opacity:1;}
+.hint{font-size:.66rem;color:var(--mintd);text-align:center;}
+/* admin */
+.browser{width:min(1000px,96vw);background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(10,42,42,.22);}
+.chrome{background:#dfe7e3;display:flex;align-items:center;gap:7px;padding:9px 12px;}
+.chrome .o{width:11px;height:11px;border-radius:50%;}
+.chrome .url{flex:1;background:#fff;border-radius:7px;padding:5px 11px;font-size:.72rem;color:var(--muted);}
+.win{display:flex;min-height:486px;}
+.side{background:var(--forest);color:#cfe5dd;padding:15px 12px;width:172px;flex:0 0 172px;display:flex;flex-direction:column;}
+.side .brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:.9rem;}
+.side .clinic{font-size:.68rem;color:var(--mint);margin:2px 0 15px 28px;}
+.nav a{display:flex;gap:9px;padding:9px 10px;border-radius:9px;color:#bcd6cd;font-size:.82rem;margin-bottom:2px;}
+.nav a.on{background:var(--forest2);color:#fff;font-weight:700;}
+.main{padding:16px 18px;background:#fbfdfc;flex:1;min-width:0;}
+.mtop{display:flex;align-items:flex-end;gap:12px;margin-bottom:13px;}
+.mtop h3{margin:0;font-size:1.05rem;color:var(--forest);}.mtop .date{color:var(--muted);font-size:.78rem;}
+.kpis{display:flex;gap:8px;margin-left:auto;}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 12px;text-align:center;min-width:60px;}
+.kpi .v{font-weight:700;font-size:1.05rem;color:var(--forest);}.kpi .v.warn{color:var(--alert);}.kpi .k{font-size:.6rem;color:var(--muted);}
+table.rs{width:100%;border-collapse:collapse;font-size:.78rem;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+table.rs th{background:#f1f5f3;color:var(--muted);text-align:left;padding:9px 11px;font-size:.66rem;}
+table.rs td{padding:10px 11px;border-top:1px solid var(--line);}
+table.rs tr.sel td{background:var(--tint);}
+.detail{background:#fff;border-left:1px solid var(--line);padding:15px 14px;width:300px;flex:0 0 300px;display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:560px;}
+.kv{display:flex;font-size:.76rem;}.kv .k{width:66px;color:var(--muted);flex:0 0 66px;}
+.ai{background:var(--forest);color:#eaf5f0;border-radius:11px;padding:12px;}
+.ai .h{display:flex;gap:7px;color:var(--mint);font-size:.72rem;font-weight:700;margin-bottom:6px;}
+.ai p{margin:0 0 8px;font-size:.78rem;line-height:1.6;}
+.ai .nt{font-size:.63rem;color:#9fc4b8;border-top:1px solid #1e4f48;padding-top:7px;}
+.empty{color:var(--muted);font-size:.8rem;text-align:center;padding:24px 10px;}
+.billbox{background:#f7faf9;border:1px solid var(--line);border-radius:10px;padding:11px;}
+.flow{display:flex;gap:4px;font-size:.6rem;color:var(--muted);margin-bottom:7px;flex-wrap:wrap;}
+.flow .s{padding:2px 7px;border-radius:999px;background:#eef1f0;}
+.flow .s.on{background:var(--mint);color:#05332a;font-weight:700;}
+</style></head><body>
+
+<div class="bar">
+  <svg width="22" height="22" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#4ecfa0" stroke-width="4"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>
+  <div><h1>MediConnect — 動くプロトタイプ v2</h1><div class="sub" style="color:#9fc4b8;font-weight:400">タップで操作 ・ 問診詳細／待ち時間／会計フロー</div></div>
+  <div class="seg"><button id="vp" class="on">患者アプリ</button><button id="va">管理画面</button></div>
+  <button class="reset" id="reset">リセット</button>
+</div>
+<div class="note">※ <b>社外秘</b>・<b>合成データ</b>。問診項目・要注意条件は<b>大上監修の草案</b>。患者で問診提出→管理画面で会計作成・消込→患者の会計が確定、まで動きます。</div>
+<div class="stage" id="stage"></div>
+
+<script>
+"use strict";
+const S={
+ view:'patient',screen:'home',step:1,
+ dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},
+ reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',
+ assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',
+ submitted:false,flagged:false,
+ paid:false,adminBill:'none'
+};
+const DEPTS=['内科','小児科','皮膚科'];
+const DAYS=[{n:17,past:true},{n:18,past:true},{n:19,s:'best'},{n:20,s:'ok'},{n:21,s:'few'},{n:22,s:'best'},{n:23,off:true},
+ {n:24,s:'ok'},{n:25,s:'ok'},{n:26,s:'full'},{n:27,s:'few'},{n:28,s:'best'},{n:29,s:'ok'},{n:30,off:true}];
+const SYM={best:'◎',ok:'〇',few:'△',full:'×',off:'休'};
+const TIMES=[['9:00','best'],['9:30','ok'],['10:00','full'],['10:30','few'],['11:00','ok'],['11:30','few'],['14:00','best'],['14:30','few'],['15:00','full'],['15:30','ok'],['16:00','best'],['16:30','ok']];
+const REASONS=['発熱','せき','のどの痛み','頭痛','腹痛','下痢','倦怠感','発疹'];
+const ASSOC=['息苦しさ','胸の痛み','嘔吐','めまい','むくみ'];      // 息苦しさ/胸の痛み = レッドフラグ（要監修）
+const REDFLAG=['息苦しさ','胸の痛み'];
+const HISTORY=['高血圧','糖尿病','喘息','心臓病','なし'];
+const WAIT_COUNT=5, WAIT_PER=3;                                  // 院設定：待ち人数 × 1人あたり目安(分)
+const stage=document.getElementById('stage');
+
+function isFlag(){return S.nrs>=7 || (+S.temp>=38.5) || S.assoc.some(a=>REDFLAG.includes(a));}
+function aiSummary(){
+ const r=S.reason.length?S.reason.join('・'):'記載なし';
+ const t=S.temp?S.temp+'℃':'記載なし';
+ const extra=[];
+ if(S.assoc.length)extra.push('随伴症状：'+S.assoc.join('・'));
+ if(S.history.filter(h=>h!=='なし').length)extra.push('既往：'+S.history.filter(h=>h!=='なし').join('・'));
+ let s=`${S.onset}からの${r}（経過：${S.course}）が主訴。NRS ${S.nrs}、体温 ${t}。`;
+ if(extra.length)s+=extra.join('、')+'。';
+ if(S.flagged)s+=' レッドフラグ／高熱・高NRSのため優先確認の候補。';
+ return s;
+}
+
+/* chips */
+function chips(group,opts,multi,flagable){
+ return `<div class="chips">`+opts.map(o=>{
+  const on=multi?S[group].includes(o):S[group]===o;
+  const fl=flagable&&REDFLAG.includes(o)?'flagable':'';
+  return `<span class="chip ${fl} ${on?'on':''}" data-g="${group}" data-v="${o}" data-multi="${multi?1:0}">${o}</span>`;
+ }).join('')+`</div>`;}
+
+/* patient frame */
+function tab(n,i,l){return `<div class="tb ${S.screen===n?'on':''}" data-tab="${n}"><span class="d">${i}</span>${l}</div>`;}
+function ab(title,back){return `<div class="ab">${back?`<span class="ic" data-tab="home">←</span>`:`<svg width="16" height="16" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#4ecfa0" stroke-width="4"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>`}<span class="t">${title}</span></div>`;}
+function phone(inner,bar){return `<div class="phone"><div class="screen"><div class="notch"></div>${bar}<div class="body">${inner}</div>
+ <div class="tabs">${tab('home','🏠','ホーム')}${tab('booking','📅','予約')}${tab('inquiry','📝','問診')}${tab('payment','🧾','会計')}</div>
+ <div class="toast" id="toast"></div></div></div>`;}
+
+function homeView(){
+ const wait=WAIT_COUNT*WAIT_PER;
+ const inq=S.submitted
+  ?`<div class="card fxs"><div class="row"><span class="lab">事前問診</span><span class="sp"></span><span class="badge ${S.flagged?'b-warn':'b-ok'}">${S.flagged?'● 要注意':'提出済'}</span></div></div>`
+  :`<div class="alert" data-tab="inquiry"><span class="dot" style="background:var(--amber)"></span><div class="fxs" style="flex:1">事前問診がまだです。来院前にご入力ください。</div><span class="chip on" style="padding:4px 9px">入力</span></div>`;
+ const inner=`<div class="fs" style="font-weight:700">こんにちは、田中さん</div>
+  <div class="card key"><div class="row"><span class="lab">次回の予約</span><span class="sp"></span><span class="badge b-ok">予約済み</span></div>
+   <div class="big" style="margin:6px 0 2px">${S.booked.dept} ・ ${S.booked.date} ${S.booked.time}</div>
+   <div class="fxs" style="opacity:.8">担当：大上 医師 ・ おおうえ内科クリニック</div>
+   <button class="btn" style="margin-top:11px" data-act="qr">受付用QRを表示</button></div>
+  ${inq}
+  <div class="card"><div class="lab">本日の混雑状況</div>
+   <div class="row" style="align-items:baseline;margin-top:2px"><span class="big" style="color:var(--mintd)">現在 ${WAIT_COUNT}人待ち</span><span class="sp"></span><span class="fs muted">目安 約${wait}分（概算）</span></div>
+   <div class="fxs muted" style="margin-top:5px">※ 待ち人数＝受付済で「まだ呼ばれていない」人数（次に呼ばれる人が1番目）。診察中・未来院は含めません。診療科／医師ごとに集計。目安は人数×院設定の1人あたり（${WAIT_PER}分）の概算で、来院日に表示。</div></div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:5px">診療時間</div>平日 9:00–18:00 ／ 土 9:00–13:00<br><span class="muted">休診：日曜・祝日</span></div>
+  <div class="hint">↑ タブや「入力」「QR」をタップ</div>`;
+ return phone(inner,ab('MediConnect',false));
+}
+
+function bookingView(){
+ const sb=`<div class="step">${['診療科','日付','時間','確認'].map((l,i)=>`${i?' ▸ ':''}${S.step===i+1?'<b>'+l+'</b>':l}`).join('')}</div>`;
+ let inner='';
+ if(S.step===1)inner=`${sb}<div class="lab">診療科</div>${chips('dept',DEPTS,false)}<div class="hint">診療科を選ぶと日付へ</div>`;
+ else if(S.step===2)inner=`${sb}<div class="card"><div class="row fs"><b>2026年 8月</b><span class="sp"></span><span class="muted">‹ ›</span></div>
+   <div class="cal"><div class="h">月</div><div class="h">火</div><div class="h">水</div><div class="h">木</div><div class="h">金</div><div class="h">土</div><div class="h sun">日</div>
+   ${DAYS.map(d=>{const cls=d.past?'past':d.off?'off':'';const sel=S.date===d.n?'on':'';const sym=d.past?'·':SYM[d.off?'off':d.s];const sc=d.past?'':d.off?'s-off':'s-'+d.s;
+     return `<div class="cell ${cls} ${sel}" ${(!d.past&&!d.off)?`data-date="${d.n}"`:''}><span class="dn">${d.n}</span><span class="sym ${sc}">${sym}</span></div>`;}).join('')}</div></div>
+   <div class="legend"><span><b class="s-best">◎</b>空き多</span><span><b class="s-ok">〇</b>空きあり</span><span><b class="s-few">△</b>残りわずか</span><span><b class="s-full">×</b>満席</span><span><b class="s-off">休</b>休診</span></div>`;
+ else if(S.step===3)inner=`${sb}<div class="lab">時間帯 — 8/${S.date}(月)</div><div class="tgrid">${TIMES.map(([t,s])=>{const off=s==='full';return `<div class="tchip ${off?'off':''} ${S.time===t?'on':''}" ${off?'':`data-time="${t}"`}><div class="tt">${t}</div><div class="ta s-${s}">${SYM[s]}</div></div>`;}).join('')}</div>`;
+ else if(S.step===4)inner=`${sb}<div class="card"><div class="row fs"><span class="muted">診療科</span><span class="sp"></span><b>${S.dept}</b></div><div class="line"></div><div class="row fs"><span class="muted">日付</span><span class="sp"></span><b>8/${S.date}(月)</b></div><div class="line"></div><div class="row fs"><span class="muted">時間</span><span class="sp"></span><b>${S.time}</b></div></div><button class="btn" data-act="confirm">この内容で予約を確定</button>`;
+ else if(S.step===5)inner=`<div class="card key" style="text-align:center"><div class="lab">予約が完了しました</div><div class="big" style="margin:6px 0">${S.dept} ・ 8/${S.date}(月) ${S.time}</div></div><div class="card" style="text-align:center"><div class="lab">受付用QR</div><div class="qr"></div></div><button class="btn" data-tab="home">ホームへ戻る</button>`;
+ return phone(inner,ab('予約する',true));
+}
+function qrView(){return phone(`<div class="card key" style="text-align:center"><div class="lab">次回の予約</div><div class="big" style="margin:6px 0">${S.booked.dept} ・ ${S.booked.date} ${S.booked.time}</div></div><div class="card" style="text-align:center"><div class="lab">受付用QR</div><div class="qr"></div><div class="fxs muted">来院時に受付でご提示ください</div></div><button class="btn" data-tab="home">ホームへ戻る</button>`,ab('受付用QR',true));}
+
+function inquiryView(){
+ if(S.submitted){
+  const inner=`<div class="card key" style="text-align:center"><div class="lab">問診を提出しました</div><div class="big" style="margin:6px 0">${S.flagged?'要注意として記録':'ありがとうございました'}</div><div class="fxs" style="opacity:.85">${S.flagged?'スタッフが優先的に確認します':'来院前の準備が整いました'}</div></div>
+   <div class="card fxs"><div class="lab" style="margin-bottom:5px">入力内容</div>受診理由：${S.reason.join('・')||'—'}<br>経過：${S.course} ／ NRS：${S.nrs} ／ 体温：${S.temp||'—'}℃<br>随伴：${S.assoc.join('・')||'—'} ／ 既往：${S.history.filter(h=>h!=='なし').join('・')||'なし'}</div>
+   <div class="hint">「管理画面」に切り替えると反映が見られます</div>
+   <button class="btn ghost" data-act="reinq">入力し直す（デモ）</button><button class="btn" data-tab="home">ホームへ戻る</button>`;
+  return phone(inner,ab('事前問診',true));
+ }
+ const inner=`
+  <div class="lab">受診理由（複数可）<span class="req">必須</span></div>${chips('reason',REASONS,true)}
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">いつから</div>${chips('onset',['昨日','3日前','1週間前','それ以上'],false)}</div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">経過</div>${chips('course',['良くなっている','変わらない','悪化している'],false)}</div>
+  <div class="card"><div class="row"><span class="lab">痛みの強さ（0〜10）<span class="req">必須</span></span><span class="sp"></span><span class="nrsval" id="nrsv">${S.nrs}</span> <span class="badge ${S.nrs>=7?'b-warn':'b-wait'}" id="nrsb">${S.nrs>=7?'要注意':' '}</span></div><input type="range" min="0" max="10" value="${S.nrs}" id="nrs"><div class="row fxs muted"><span>なし</span><span class="sp"></span><span>最大</span></div></div>
+  <div class="card"><div class="lab" style="margin-bottom:6px">体温（℃）<span class="req">必須</span></div><input class="temp" id="temp" type="number" step="0.1" inputmode="decimal" placeholder="36.5" value="${S.temp}"> <span class="badge ${(+S.temp>=38.5)?'b-warn':'b-wait'}" id="tempb">${(+S.temp>=38.5)?'要注意':' '}</span></div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">気になる症状（あれば）</div>${chips('assoc',ASSOC,true,true)}<div class="muted" style="margin-top:5px;font-size:.66rem">※ 息苦しさ・胸の痛みは要確認（要注意条件は監修で確定）</div></div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">既往歴</div>${chips('history',HISTORY,true)}</div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">服薬中の薬</div>${chips('meds',['なし','あり'],false)}</div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">アレルギー</div>${chips('allergy',['なし','薬','食物'],false)}</div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px">妊娠の可能性</div>${chips('preg',['該当なし','可能性なし','可能性あり'],false)}</div>
+  <button class="btn" data-act="submit">提出する</button>
+  <div class="fxs muted" style="text-align:center">NRS≥7／体温≥38.5℃／レッドフラグ症状で自動的に要注意。<br><b>項目・必須/任意・条件は大上監修で確定</b>。</div>`;
+ return phone(inner,ab('事前問診（草案）',true));
+}
+
+function paymentView(){
+ const cur=S.paid
+  ?`<div class="card"><div class="row fxs"><span class="muted">${S.booked.date} ${S.booked.dept}</span><span class="sp"></span><span class="badge b-ok">会計確定</span></div><div class="line"></div>
+     <div class="row fs"><span>再診料</span><span class="sp"></span><span class="mono">¥730</span></div><div class="row fs"><span>処方箋料</span><span class="sp"></span><span class="mono">¥680</span></div><div class="row fs"><span>投薬</span><span class="sp"></span><span class="mono">¥2,720</span></div><div class="line"></div><div class="row fxs muted"><span>保険3割</span><span class="sp"></span><span>自己負担</span></div></div>
+     <div class="card key"><div class="lab">お支払い（自己負担額）</div><div class="big mono" style="font-size:1.6rem">¥1,240</div><div class="fxs" style="opacity:.8">窓口でお支払い済み</div></div>
+     <button class="btn ghost" data-act="receipt">領収書PDFを表示</button>`
+  :`<div class="card" style="text-align:center"><div class="lab">${S.booked.date} ${S.booked.dept}</div><div class="big" style="margin:8px 0;color:var(--slate)">会計待ち</div><div class="fxs muted">診察後、受付でお会計します。<br>確定するとここに明細・領収書が表示されます。</div></div>
+     <div class="hint">「管理画面」で受付が会計を作成・消込すると確定します</div>`;
+ const inner=`<div class="lab">今回の会計</div>${cur}<div class="line"></div>
+   <div class="lab">過去の会計</div>
+   <div class="card fxs"><div class="row"><span class="muted">8/10(土) 内科 <span class="mono">#1042</span></span><span class="sp"></span><span class="badge b-ok">確定</span></div><div class="row" style="margin-top:4px"><span>自己負担</span><span class="sp"></span><span class="mono">¥1,180</span></div></div>`;
+ return phone(inner,ab('会計',true));
+}
+
+/* admin */
+function adminView(){
+ const flagged=S.submitted&&S.flagged;
+ const sub=S.submitted?(flagged?'<span class="badge b-warn">● 要注意</span>':'<span class="badge b-ok">提出済</span>'):'<span class="badge b-wait">未提出</span>';
+ let bill='';
+ if(S.submitted){
+  if(S.adminBill==='none')bill=`<button class="btn dark sm" data-act="bill">会計を作成</button>`;
+  else if(S.adminBill==='creating')bill=`<div class="billbox"><div class="flow"><span class="s on">①明細</span><span class="s on">②保険計算</span><span class="s">③消込</span><span class="s">④領収書</span></div>
+     <div class="row fxs"><span>再診料</span><span class="sp"></span><span class="mono">¥730</span></div><div class="row fxs"><span>処方箋料</span><span class="sp"></span><span class="mono">¥680</span></div><div class="row fxs"><span>投薬</span><span class="sp"></span><span class="mono">¥2,720</span></div><div class="line"></div>
+     <div class="row fxs"><span>保険区分</span><span class="sp"></span><b>3割</b></div><div class="row fs"><span>自己負担</span><span class="sp"></span><b class="mono">¥1,240</b></div>
+     <button class="btn sm" style="margin-top:8px" data-act="settle">消込（支払い済みにする）→ 領収書発行</button></div>`;
+  else bill=`<div class="billbox"><div class="flow"><span class="s on">①明細</span><span class="s on">②保険計算</span><span class="s on">③消込</span><span class="s on">④領収書</span></div><div class="row fs"><span class="badge b-ok">会計確定・領収書発行済み</span><span class="sp"></span><b class="mono">¥1,240</b></div><div class="fxs muted" style="margin-top:4px">患者アプリの「会計」に反映されました。</div></div>`;
+ }
+ const detail=S.submitted?`
+   <div class="row"><h4 style="margin:0;color:var(--forest)">田中 太郎</h4><span class="sp"></span>${flagged?'<span class="badge b-warn">要注意</span>':''}</div>
+   <div class="muted fxs">42歳・男性 ・ ${S.booked.date} ${S.booked.time} ・ ${S.booked.dept}</div><div class="line"></div>
+   <div class="lab">事前問診</div>
+   <div class="kv"><span class="k">受診理由</span><span>${S.reason.join('・')||'—'}（${S.onset}・${S.course}）</span></div>
+   <div class="kv"><span class="k">NRS</span><span class="mono" style="${S.nrs>=7?'color:var(--alert);font-weight:700':''}">${S.nrs} / 10</span></div>
+   <div class="kv"><span class="k">体温</span><span class="mono" style="${+S.temp>=38.5?'color:var(--alert);font-weight:700':''}">${S.temp||'—'} ℃</span></div>
+   <div class="kv"><span class="k">随伴症状</span><span style="${S.assoc.some(a=>REDFLAG.includes(a))?'color:var(--alert);font-weight:700':''}">${S.assoc.join('・')||'—'}</span></div>
+   <div class="kv"><span class="k">既往/薬</span><span>${S.history.filter(h=>h!=='なし').join('・')||'なし'} ／ 服薬${S.meds}</span></div>
+   <div class="ai"><div class="h">◍ AI要約（スタッフ向け）</div><p>${aiSummary()}</p><div class="nt">※ AIによる要約・優先度の補助です。診断ではありません。最終判断は医師が行います。</div></div>
+   ${bill}`
+  :`<div class="empty">患者アプリで問診を提出すると、ここに問診・AI要約・会計操作が表示されます。</div>`;
+ return `<div class="browser"><div class="chrome"><span class="o" style="background:#ff5f57"></span><span class="o" style="background:#febc2e"></span><span class="o" style="background:#28c840"></span><span class="url">admin.mediconnect.app/reservations</span></div>
+  <div class="win"><aside class="side"><div class="brand"><svg width="17" height="17" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#4ecfa0" stroke-width="4"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>MediConnect</div><div class="clinic">おおうえ内科クリニック</div>
+    <nav class="nav"><a>▦ 概要</a><a class="on">📅 予約管理</a><a>📝 問診管理</a><a>🧾 会計</a><a>⚙ 設定</a></nav></aside>
+   <main class="main"><div class="mtop"><h3>予約管理</h3><span class="date">2026年8月24日(月)</span><div class="kpis"><div class="kpi"><div class="v">24</div><div class="k">本日</div></div><div class="kpi"><div class="v">5</div><div class="k">待ち</div></div><div class="kpi"><div class="v warn">${flagged?1:0}</div><div class="k">要注意</div></div></div></div>
+    <table class="rs"><thead><tr><th>時刻</th><th>患者</th><th>診療科</th><th>ステータス</th><th>問診</th><th>会計</th></tr></thead><tbody>
+     <tr><td class="mono">10:00</td><td>佐藤 みき</td><td>内科</td><td><span class="badge b-ok">受付済</span></td><td><span class="badge b-ok">提出済</span></td><td><span class="badge b-ok">済</span></td></tr>
+     <tr class="${S.submitted?'sel':''}"><td class="mono">${S.booked.time}</td><td><b>田中 太郎</b></td><td>${S.booked.dept}</td><td><span class="badge b-wait">診察待ち</span></td><td>${sub}</td><td>${S.paid?'<span class="badge b-ok">確定</span>':'<span class="badge b-wait">未</span>'}</td></tr>
+     <tr><td class="mono">11:00</td><td>鈴木 一郎</td><td>小児科</td><td><span class="badge b-wait">予約</span></td><td><span class="badge b-wait">未提出</span></td><td>—</td></tr>
+    </tbody></table>
+    <div class="hint" style="margin-top:10px;text-align:left">右パネルで「会計を作成 → 消込」すると、患者アプリの会計が確定します。</div></main>
+   <aside class="detail">${detail}</aside></div></div>`;
+}
+
+function render(){
+ document.getElementById('vp').classList.toggle('on',S.view==='patient');
+ document.getElementById('va').classList.toggle('on',S.view==='admin');
+ if(S.view==='admin'){stage.innerHTML=adminView();return;}
+ let v;
+ if(S.screen==='home')v=homeView();else if(S.screen==='booking')v=bookingView();
+ else if(S.screen==='inquiry')v=inquiryView();else if(S.screen==='payment')v=paymentView();
+ else if(S.screen==='qr')v=qrView();
+ stage.innerHTML=v;wire();
+}
+function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+function wire(){
+ const nrs=document.getElementById('nrs');
+ if(nrs)nrs.addEventListener('input',e=>{S.nrs=+e.target.value;document.getElementById('nrsv').textContent=S.nrs;const b=document.getElementById('nrsb');b.textContent=S.nrs>=7?'要注意':' ';b.className='badge '+(S.nrs>=7?'b-warn':'b-wait');});
+ const tp=document.getElementById('temp');
+ if(tp)tp.addEventListener('input',e=>{S.temp=e.target.value;const hi=+S.temp>=38.5;const b=document.getElementById('tempb');b.textContent=hi?'要注意':' ';b.className='badge '+(hi?'b-warn':'b-wait');});
+}
+stage.addEventListener('click',e=>{
+ const t=e.target.closest('[data-tab],[data-dept],[data-date],[data-time],[data-g],[data-act]');
+ if(!t)return;
+ if(t.dataset.tab){S.screen=t.dataset.tab;if(t.dataset.tab==='booking')S.step=1;render();return;}
+ if(t.dataset.date){S.date=+t.dataset.date;S.step=3;render();return;}
+ if(t.dataset.time){S.time=t.dataset.time;S.step=4;render();return;}
+ if(t.dataset.g){const g=t.dataset.g,v=t.dataset.v,multi=t.dataset.multi==='1';
+   if(g==='dept'){S.dept=v;S.step=2;render();return;}
+   if(multi){const a=S[g];const i=a.indexOf(v);i<0?a.push(v):a.splice(i,1);t.classList.toggle('on');}
+   else{document.querySelectorAll(`[data-g="${g}"]`).forEach(el=>el.classList.remove('on'));t.classList.add('on');S[g]=v;}
+   return;}
+ const a=t.dataset.act;
+ if(a==='confirm'){S.booked={dept:S.dept,date:'8/'+S.date+'(月)',time:S.time};S.paid=false;S.adminBill='none';S.step=5;render();return;}
+ if(a==='qr'){S.screen='qr';render();return;}
+ if(a==='submit'){if(S.reason.length===0){toast('受診理由を選んでください');return;}S.flagged=isFlag();S.submitted=true;render();toast(S.flagged?'提出しました（要注意）':'提出しました');return;}
+ if(a==='reinq'){S.submitted=false;S.flagged=false;render();return;}
+ if(a==='receipt'){toast('領収書PDF（サンプル）を表示');return;}
+ if(a==='bill'){S.adminBill='creating';render();return;}
+ if(a==='settle'){S.adminBill='paid';S.paid=true;render();toast('消込・領収書発行 → 患者アプリに反映');return;}
+});
+document.getElementById('vp').onclick=()=>{S.view='patient';render();};
+document.getElementById('va').onclick=()=>{S.view='admin';render();};
+document.getElementById('reset').onclick=()=>{Object.assign(S,{view:'patient',screen:'home',step:1,dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',submitted:false,flagged:false,paid:false,adminBill:'none'});render();};
+render();
+</script></body></html>
