@@ -120,6 +120,10 @@ body.noteson .stage{padding-bottom:168px;}
 .nitem .nt{color:#e7ece4;font-size:.73rem;font-weight:700;}
 .nitem .nd{color:#aeb6ab;font-size:.65rem;margin-top:3px;line-height:1.4;}
 .nitem .loc{color:#83b9a4;font-size:.6rem;margin-top:4px;}
+/* コメントボタン */
+#cmtBtn{position:fixed;right:16px;bottom:16px;z-index:45;background:var(--mint);color:#05332a;border:0;border-radius:999px;padding:11px 16px;font-size:.82rem;font-weight:700;box-shadow:0 6px 18px rgba(10,42,42,.3);cursor:pointer;}
+#cmtBtn:hover{background:var(--mintd);color:#fff;}
+body.noteson #cmtBtn{bottom:176px;}
 </style></head><body>
 
 <div class="bar">
@@ -132,6 +136,7 @@ body.noteson .stage{padding-bottom:168px;}
 <div class="note">※ <b>社外秘</b>・<b>合成データ</b>。問診項目・要注意条件は<b>大上監修の草案</b>。患者で問診提出→管理画面で会計作成・消込→患者の会計が確定、まで動きます。</div>
 <div class="stage" id="stage"></div>
 <div id="notesPanel"></div>
+<button id="cmtBtn">💬 コメント</button>
 
 <script>
 "use strict";
@@ -163,6 +168,14 @@ const NOTES=[
  {n:7,t:'AI要約の文言・免責',d:'要約の表現・免責の出し方',loc:'管理・予約管理',go:{view:'admin'}},
  {n:8,t:'明細入力・保険区分',d:'明細の入力方法・保険区分のUI',loc:'管理・会計',go:{view:'admin'}}
 ];
+// === Googleフォーム設定（フォーム作成後にここだけ差し替え）===
+// フォーム右上 ⋮ →「事前入力したURLを取得」で出た base と entry.xxxx を入れる
+const FORM={
+ base:'',               // 例: https://docs.google.com/forms/d/e/XXXXXXXX/viewform
+ screen:'entry.1111',   // 「画面名」項目の entry ID
+ note:'entry.2222',     // 「論点番号」項目の entry ID
+ url:'entry.3333'       // 「URL」項目の entry ID（任意）
+};
 const stage=document.getElementById('stage');
 
 function isFlag(){return S.nrs>=7 || (+S.temp>=38.5) || S.assoc.some(a=>REDFLAG.includes(a));}
@@ -345,6 +358,22 @@ function jumpNote(i){
  const m=stage.querySelector(`[data-note="${o.n}"]`);
  if(m){if(m.scrollIntoView)m.scrollIntoView({behavior:'smooth',block:'center'});m.classList.add('flash');setTimeout(()=>m.classList.remove('flash'),1300);}
 }
+function screenName(){
+ if(S.view==='admin')return '管理画面';
+ return ({home:'ホーム',booking:'予約',inquiry:'問診',payment:'会計',qr:'予約QR'})[S.screen]||S.screen;
+}
+function curNotes(){
+ return NOTES.filter(o=>o.go.view===S.view && (S.view==='admin'||o.go.screen===S.screen)).map(o=>o.n).join(',');
+}
+function openComment(){
+ const sc=screenName(), ns=curNotes(), pageUrl=location.href;
+ if(!FORM.base){alert('Googleフォームが未設定です。\nスクリプト先頭の FORM 設定（base と entry ID）を入れると有効になります。\n\n（参考プリフィル）画面='+sc+' ／ 論点='+(ns||'—'));return;}
+ const u=new URL(FORM.base);
+ u.searchParams.set(FORM.screen,sc);
+ if(ns)u.searchParams.set(FORM.note,ns);
+ if(FORM.url&&!/^entry\.3333$/.test(FORM.url))u.searchParams.set(FORM.url,pageUrl);
+ window.open(u.toString(),'_blank','noopener');
+}
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
 function wire(){
  const nrs=document.getElementById('nrs');
@@ -375,6 +404,7 @@ stage.addEventListener('click',e=>{
 document.getElementById('vp').onclick=()=>{S.view='patient';render();};
 document.getElementById('va').onclick=()=>{S.view='admin';render();};
 document.getElementById('ntoggle').onclick=()=>{S.notes=!S.notes;document.getElementById('ntoggle').classList.toggle('on',S.notes);render();};
+document.getElementById('cmtBtn').onclick=openComment;
 document.getElementById('reset').onclick=()=>{Object.assign(S,{view:'patient',screen:'home',step:1,dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',submitted:false,flagged:false,paid:false,adminBill:'none',notes:false});document.getElementById('ntoggle').classList.remove('on');render();};
 renderNotesBar();
 render();
