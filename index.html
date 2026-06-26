@@ -100,16 +100,38 @@ table.rs tr.sel td{background:var(--tint);}
 .flow{display:flex;gap:4px;font-size:.6rem;color:var(--muted);margin-bottom:7px;flex-wrap:wrap;}
 .flow .s{padding:2px 7px;border-radius:999px;background:#eef1f0;}
 .flow .s.on{background:var(--mint);color:#05332a;font-weight:700;}
+/* 未確定UIマーカー */
+.ntoggle{border:1px solid var(--amber);background:transparent;color:#f4d98a;border-radius:8px;padding:6px 11px;font-size:.74rem;cursor:pointer;}
+.ntoggle.on{background:var(--amber);color:#3a2e07;font-weight:700;}
+[data-note]{position:relative;}
+.nmark{position:absolute;top:-9px;left:-9px;min-width:19px;height:19px;padding:0 4px;background:var(--amber);color:#2a2206;font-size:.66rem;font-weight:700;border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.3);z-index:9;}
+.noted{outline:2px dashed var(--amber);outline-offset:2px;border-radius:8px;}
+.noted.flash{animation:nflash 1.3s ease;}
+@keyframes nflash{0%,100%{outline-color:var(--amber);}50%{outline-color:var(--alert);}}
+body.noteson .stage{padding-bottom:168px;}
+#notesPanel{position:fixed;left:0;right:0;bottom:0;background:#1b1e19;border-top:2px solid var(--amber);padding:9px 12px 11px;z-index:40;display:none;}
+#notesPanel.on{display:block;}
+#notesPanel .ph{color:#f4d98a;font-size:.72rem;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:8px;}
+#notesPanel .ph .x{margin-left:auto;cursor:pointer;color:#9fa89f;font-weight:400;}
+.nrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px;}
+.nitem{flex:0 0 auto;width:208px;background:#272b24;border:1px solid #3a3f36;border-radius:10px;padding:8px 10px;cursor:pointer;}
+.nitem:hover{border-color:var(--amber);background:#2d3129;}
+.nitem .nn{display:inline-flex;width:17px;height:17px;background:var(--amber);color:#2a2206;font-size:.62rem;font-weight:700;border-radius:50%;align-items:center;justify-content:center;margin-right:6px;vertical-align:middle;}
+.nitem .nt{color:#e7ece4;font-size:.73rem;font-weight:700;}
+.nitem .nd{color:#aeb6ab;font-size:.65rem;margin-top:3px;line-height:1.4;}
+.nitem .loc{color:#83b9a4;font-size:.6rem;margin-top:4px;}
 </style></head><body>
 
 <div class="bar">
   <svg width="22" height="22" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#4ecfa0" stroke-width="4"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>
   <div><h1>MediConnect — 動くプロトタイプ v2</h1><div class="sub" style="color:#9fc4b8;font-weight:400">タップで操作 ・ 問診詳細／待ち時間／会計フロー</div></div>
   <div class="seg"><button id="vp" class="on">患者アプリ</button><button id="va">管理画面</button></div>
+  <button class="ntoggle" id="ntoggle">未確定UI</button>
   <button class="reset" id="reset">リセット</button>
 </div>
 <div class="note">※ <b>社外秘</b>・<b>合成データ</b>。問診項目・要注意条件は<b>大上監修の草案</b>。患者で問診提出→管理画面で会計作成・消込→患者の会計が確定、まで動きます。</div>
 <div class="stage" id="stage"></div>
+<div id="notesPanel"></div>
 
 <script>
 "use strict";
@@ -119,7 +141,7 @@ const S={
  reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',
  assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',
  submitted:false,flagged:false,
- paid:false,adminBill:'none'
+ paid:false,adminBill:'none',notes:false
 };
 const DEPTS=['内科','小児科','皮膚科'];
 const DAYS=[{n:17,past:true},{n:18,past:true},{n:19,s:'best'},{n:20,s:'ok'},{n:21,s:'few'},{n:22,s:'best'},{n:23,off:true},
@@ -131,6 +153,16 @@ const ASSOC=['息苦しさ','胸の痛み','嘔吐','めまい','むくみ'];   
 const REDFLAG=['息苦しさ','胸の痛み'];
 const HISTORY=['高血圧','糖尿病','喘息','心臓病','なし'];
 const WAIT_COUNT=5, WAIT_PER=3;                                  // 院設定：待ち人数 × 1人あたり目安(分)
+const NOTES=[
+ {n:1,t:'待ち時間の見せ方',d:'人数のみ／目安併記。列の単位（診療科・医師ごと）',loc:'患者・ホーム',go:{view:'patient',screen:'home'}},
+ {n:2,t:'複数科の初期表示',d:'診療科が複数のときの並び順・初期選択',loc:'患者・予約',go:{view:'patient',screen:'booking',step:1}},
+ {n:3,t:'当日締切',d:'当日予約は診療開始◯分前まで可？',loc:'患者・予約',go:{view:'patient',screen:'booking',step:3}},
+ {n:4,t:'問診の項目',d:'項目の過不足・必須/任意の線引き',loc:'患者・問診',go:{view:'patient',screen:'inquiry'}},
+ {n:5,t:'要注意の条件',d:'NRS≥7／体温≥38.5／レッドフラグ症状の範囲',loc:'患者・問診',go:{view:'patient',screen:'inquiry'}},
+ {n:6,t:'会計の様式・文言',d:'領収書の様式・「会計待ち」の表現',loc:'患者・会計',go:{view:'patient',screen:'payment'}},
+ {n:7,t:'AI要約の文言・免責',d:'要約の表現・免責の出し方',loc:'管理・予約管理',go:{view:'admin'}},
+ {n:8,t:'明細入力・保険区分',d:'明細の入力方法・保険区分のUI',loc:'管理・会計',go:{view:'admin'}}
+];
 const stage=document.getElementById('stage');
 
 function isFlag(){return S.nrs>=7 || (+S.temp>=38.5) || S.assoc.some(a=>REDFLAG.includes(a));}
@@ -172,7 +204,7 @@ function homeView(){
    <div class="fxs" style="opacity:.8">担当：大上 医師 ・ おおうえ内科クリニック</div>
    <button class="btn" style="margin-top:11px" data-act="qr">受付用QRを表示</button></div>
   ${inq}
-  <div class="card"><div class="lab">本日の混雑状況</div>
+  <div class="card" data-note="1"><div class="lab">本日の混雑状況</div>
    <div class="row" style="align-items:baseline;margin-top:2px"><span class="big" style="color:var(--mintd)">現在 ${WAIT_COUNT}人待ち</span><span class="sp"></span><span class="fs muted">目安 約${wait}分（概算）</span></div>
    <div class="fxs muted" style="margin-top:5px">※ 待ち人数＝受付済で「まだ呼ばれていない」人数（次に呼ばれる人が1番目）。診察中・未来院は含めません。診療科／医師ごとに集計。目安は人数×院設定の1人あたり（${WAIT_PER}分）の概算で、来院日に表示。</div></div>
   <div class="card fxs"><div class="lab" style="margin-bottom:5px">診療時間</div>平日 9:00–18:00 ／ 土 9:00–13:00<br><span class="muted">休診：日曜・祝日</span></div>
@@ -183,13 +215,13 @@ function homeView(){
 function bookingView(){
  const sb=`<div class="step">${['診療科','日付','時間','確認'].map((l,i)=>`${i?' ▸ ':''}${S.step===i+1?'<b>'+l+'</b>':l}`).join('')}</div>`;
  let inner='';
- if(S.step===1)inner=`${sb}<div class="lab">診療科</div>${chips('dept',DEPTS,false)}<div class="hint">診療科を選ぶと日付へ</div>`;
+ if(S.step===1)inner=`${sb}<div class="lab" data-note="2">診療科</div>${chips('dept',DEPTS,false)}<div class="hint">診療科を選ぶと日付へ</div>`;
  else if(S.step===2)inner=`${sb}<div class="card"><div class="row fs"><b>2026年 8月</b><span class="sp"></span><span class="muted">‹ ›</span></div>
    <div class="cal"><div class="h">月</div><div class="h">火</div><div class="h">水</div><div class="h">木</div><div class="h">金</div><div class="h">土</div><div class="h sun">日</div>
    ${DAYS.map(d=>{const cls=d.past?'past':d.off?'off':'';const sel=S.date===d.n?'on':'';const sym=d.past?'·':SYM[d.off?'off':d.s];const sc=d.past?'':d.off?'s-off':'s-'+d.s;
      return `<div class="cell ${cls} ${sel}" ${(!d.past&&!d.off)?`data-date="${d.n}"`:''}><span class="dn">${d.n}</span><span class="sym ${sc}">${sym}</span></div>`;}).join('')}</div></div>
    <div class="legend"><span><b class="s-best">◎</b>空き多</span><span><b class="s-ok">〇</b>空きあり</span><span><b class="s-few">△</b>残りわずか</span><span><b class="s-full">×</b>満席</span><span><b class="s-off">休</b>休診</span></div>`;
- else if(S.step===3)inner=`${sb}<div class="lab">時間帯 — 8/${S.date}(月)</div><div class="tgrid">${TIMES.map(([t,s])=>{const off=s==='full';return `<div class="tchip ${off?'off':''} ${S.time===t?'on':''}" ${off?'':`data-time="${t}"`}><div class="tt">${t}</div><div class="ta s-${s}">${SYM[s]}</div></div>`;}).join('')}</div>`;
+ else if(S.step===3)inner=`${sb}<div class="lab" data-note="3">時間帯 — 8/${S.date}(月)</div><div class="tgrid">${TIMES.map(([t,s])=>{const off=s==='full';return `<div class="tchip ${off?'off':''} ${S.time===t?'on':''}" ${off?'':`data-time="${t}"`}><div class="tt">${t}</div><div class="ta s-${s}">${SYM[s]}</div></div>`;}).join('')}</div>`;
  else if(S.step===4)inner=`${sb}<div class="card"><div class="row fs"><span class="muted">診療科</span><span class="sp"></span><b>${S.dept}</b></div><div class="line"></div><div class="row fs"><span class="muted">日付</span><span class="sp"></span><b>8/${S.date}(月)</b></div><div class="line"></div><div class="row fs"><span class="muted">時間</span><span class="sp"></span><b>${S.time}</b></div></div><button class="btn" data-act="confirm">この内容で予約を確定</button>`;
  else if(S.step===5)inner=`<div class="card key" style="text-align:center"><div class="lab">予約が完了しました</div><div class="big" style="margin:6px 0">${S.dept} ・ 8/${S.date}(月) ${S.time}</div></div><div class="card" style="text-align:center"><div class="lab">受付用QR</div><div class="qr"></div></div><button class="btn" data-tab="home">ホームへ戻る</button>`;
  return phone(inner,ab('予約する',true));
@@ -205,12 +237,12 @@ function inquiryView(){
   return phone(inner,ab('事前問診',true));
  }
  const inner=`
-  <div class="lab">受診理由（複数可）<span class="req">必須</span></div>${chips('reason',REASONS,true)}
+  <div class="lab" data-note="4">受診理由（複数可）<span class="req">必須</span></div>${chips('reason',REASONS,true)}
   <div class="card fxs"><div class="lab" style="margin-bottom:6px">いつから</div>${chips('onset',['昨日','3日前','1週間前','それ以上'],false)}</div>
   <div class="card fxs"><div class="lab" style="margin-bottom:6px">経過</div>${chips('course',['良くなっている','変わらない','悪化している'],false)}</div>
   <div class="card"><div class="row"><span class="lab">痛みの強さ（0〜10）<span class="req">必須</span></span><span class="sp"></span><span class="nrsval" id="nrsv">${S.nrs}</span> <span class="badge ${S.nrs>=7?'b-warn':'b-wait'}" id="nrsb">${S.nrs>=7?'要注意':' '}</span></div><input type="range" min="0" max="10" value="${S.nrs}" id="nrs"><div class="row fxs muted"><span>なし</span><span class="sp"></span><span>最大</span></div></div>
   <div class="card"><div class="lab" style="margin-bottom:6px">体温（℃）<span class="req">必須</span></div><input class="temp" id="temp" type="number" step="0.1" inputmode="decimal" placeholder="36.5" value="${S.temp}"> <span class="badge ${(+S.temp>=38.5)?'b-warn':'b-wait'}" id="tempb">${(+S.temp>=38.5)?'要注意':' '}</span></div>
-  <div class="card fxs"><div class="lab" style="margin-bottom:6px">気になる症状（あれば）</div>${chips('assoc',ASSOC,true,true)}<div class="muted" style="margin-top:5px;font-size:.66rem">※ 息苦しさ・胸の痛みは要確認（要注意条件は監修で確定）</div></div>
+  <div class="card fxs"><div class="lab" style="margin-bottom:6px" data-note="5">気になる症状（あれば）</div>${chips('assoc',ASSOC,true,true)}<div class="muted" style="margin-top:5px;font-size:.66rem">※ 息苦しさ・胸の痛みは要確認（要注意条件は監修で確定）</div></div>
   <div class="card fxs"><div class="lab" style="margin-bottom:6px">既往歴</div>${chips('history',HISTORY,true)}</div>
   <div class="card fxs"><div class="lab" style="margin-bottom:6px">服薬中の薬</div>${chips('meds',['なし','あり'],false)}</div>
   <div class="card fxs"><div class="lab" style="margin-bottom:6px">アレルギー</div>${chips('allergy',['なし','薬','食物'],false)}</div>
@@ -228,7 +260,7 @@ function paymentView(){
      <button class="btn ghost" data-act="receipt">領収書PDFを表示</button>`
   :`<div class="card" style="text-align:center"><div class="lab">${S.booked.date} ${S.booked.dept}</div><div class="big" style="margin:8px 0;color:var(--slate)">会計待ち</div><div class="fxs muted">診察後、受付でお会計します。<br>確定するとここに明細・領収書が表示されます。</div></div>
      <div class="hint">「管理画面」で受付が会計を作成・消込すると確定します</div>`;
- const inner=`<div class="lab">今回の会計</div>${cur}<div class="line"></div>
+ const inner=`<div class="lab" data-note="6">今回の会計</div>${cur}<div class="line"></div>
    <div class="lab">過去の会計</div>
    <div class="card fxs"><div class="row"><span class="muted">8/10(土) 内科 <span class="mono">#1042</span></span><span class="sp"></span><span class="badge b-ok">確定</span></div><div class="row" style="margin-top:4px"><span>自己負担</span><span class="sp"></span><span class="mono">¥1,180</span></div></div>`;
  return phone(inner,ab('会計',true));
@@ -256,8 +288,8 @@ function adminView(){
    <div class="kv"><span class="k">体温</span><span class="mono" style="${+S.temp>=38.5?'color:var(--alert);font-weight:700':''}">${S.temp||'—'} ℃</span></div>
    <div class="kv"><span class="k">随伴症状</span><span style="${S.assoc.some(a=>REDFLAG.includes(a))?'color:var(--alert);font-weight:700':''}">${S.assoc.join('・')||'—'}</span></div>
    <div class="kv"><span class="k">既往/薬</span><span>${S.history.filter(h=>h!=='なし').join('・')||'なし'} ／ 服薬${S.meds}</span></div>
-   <div class="ai"><div class="h">◍ AI要約（スタッフ向け）</div><p>${aiSummary()}</p><div class="nt">※ AIによる要約・優先度の補助です。診断ではありません。最終判断は医師が行います。</div></div>
-   ${bill}`
+   <div class="ai" data-note="7"><div class="h">◍ AI要約（スタッフ向け）</div><p>${aiSummary()}</p><div class="nt">※ AIによる要約・優先度の補助です。診断ではありません。最終判断は医師が行います。</div></div>
+   <div data-note="8">${bill}</div>`
   :`<div class="empty">患者アプリで問診を提出すると、ここに問診・AI要約・会計操作が表示されます。</div>`;
  return `<div class="browser"><div class="chrome"><span class="o" style="background:#ff5f57"></span><span class="o" style="background:#febc2e"></span><span class="o" style="background:#28c840"></span><span class="url">admin.mediconnect.app/reservations</span></div>
   <div class="win"><aside class="side"><div class="brand"><svg width="17" height="17" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#4ecfa0" stroke-width="4"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>MediConnect</div><div class="clinic">おおうえ内科クリニック</div>
@@ -275,12 +307,43 @@ function adminView(){
 function render(){
  document.getElementById('vp').classList.toggle('on',S.view==='patient');
  document.getElementById('va').classList.toggle('on',S.view==='admin');
- if(S.view==='admin'){stage.innerHTML=adminView();return;}
- let v;
- if(S.screen==='home')v=homeView();else if(S.screen==='booking')v=bookingView();
- else if(S.screen==='inquiry')v=inquiryView();else if(S.screen==='payment')v=paymentView();
- else if(S.screen==='qr')v=qrView();
- stage.innerHTML=v;wire();
+ if(S.view==='admin'){stage.innerHTML=adminView();}
+ else{
+  let v;
+  if(S.screen==='home')v=homeView();else if(S.screen==='booking')v=bookingView();
+  else if(S.screen==='inquiry')v=inquiryView();else if(S.screen==='payment')v=paymentView();
+  else if(S.screen==='qr')v=qrView();
+  stage.innerHTML=v;wire();
+ }
+ afterRender();
+}
+function afterRender(){
+ document.body.classList.toggle('noteson',S.notes);
+ const p=document.getElementById('notesPanel'); if(p)p.classList.toggle('on',S.notes);
+ if(S.notes) placeNotes();
+}
+function placeNotes(){
+ stage.querySelectorAll('[data-note]').forEach(el=>{
+  el.classList.add('noted');
+  el.insertAdjacentHTML('afterbegin',`<span class="nmark">${el.getAttribute('data-note')}</span>`);
+ });
+}
+function renderNotesBar(){
+ const p=document.getElementById('notesPanel');
+ p.innerHTML=`<div class="ph">未確定UIの論点（大上と確認）<span class="x" id="nclose">閉じる ✕</span></div>`
+  +`<div class="nrow">`+NOTES.map((o,i)=>`<div class="nitem" data-i="${i}"><div class="nt"><span class="nn">${o.n}</span>${o.t}</div><div class="nd">${o.d}</div><div class="loc">📍 ${o.loc}</div></div>`).join('')+`</div>`;
+ p.querySelector('#nclose').onclick=()=>{S.notes=false;document.getElementById('ntoggle').classList.remove('on');render();};
+ p.querySelectorAll('.nitem').forEach(el=>el.onclick=()=>jumpNote(+el.dataset.i));
+}
+function jumpNote(i){
+ const o=NOTES[i],g=o.go;
+ S.view=g.view;
+ if(g.view==='patient'){S.screen=g.screen;if(g.step)S.step=g.step;
+   if(g.screen==='booking'&&g.step===3){S.dept=S.dept||'内科';S.date=S.date||24;}}
+ if(g.view==='admin'&&!S.submitted){S.submitted=true;if(S.reason.length===0)S.reason=['発熱'];S.flagged=isFlag();}
+ render();
+ const m=stage.querySelector(`[data-note="${o.n}"]`);
+ if(m){if(m.scrollIntoView)m.scrollIntoView({behavior:'smooth',block:'center'});m.classList.add('flash');setTimeout(()=>m.classList.remove('flash'),1300);}
 }
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
 function wire(){
@@ -311,6 +374,8 @@ stage.addEventListener('click',e=>{
 });
 document.getElementById('vp').onclick=()=>{S.view='patient';render();};
 document.getElementById('va').onclick=()=>{S.view='admin';render();};
-document.getElementById('reset').onclick=()=>{Object.assign(S,{view:'patient',screen:'home',step:1,dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',submitted:false,flagged:false,paid:false,adminBill:'none'});render();};
+document.getElementById('ntoggle').onclick=()=>{S.notes=!S.notes;document.getElementById('ntoggle').classList.toggle('on',S.notes);render();};
+document.getElementById('reset').onclick=()=>{Object.assign(S,{view:'patient',screen:'home',step:1,dept:null,date:null,time:null,booked:{dept:'内科',date:'8/24(月)',time:'10:30'},reason:[],onset:'3日前',course:'変わらない',nrs:5,temp:'',assoc:[],history:[],meds:'なし',allergy:'なし',preg:'該当なし',submitted:false,flagged:false,paid:false,adminBill:'none',notes:false});document.getElementById('ntoggle').classList.remove('on');render();};
+renderNotesBar();
 render();
 </script></body></html>
